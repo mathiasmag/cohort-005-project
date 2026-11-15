@@ -1,6 +1,8 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { coupons, courses, enrollments, purchases } from "~/db/schema";
+import { bestEffort, type Notifications } from "~/lib/notifications.server";
 import { getSeatAvailability, type Db } from "~/lib/refunds.server";
+import { getPerson } from "~/lib/users.server";
 
 // ─── Enrollments and Seat claims ───
 // Giving a Student an Enrollment, and a Student claiming a Seat on a Team
@@ -64,14 +66,18 @@ export type ClaimResult =
  * Seat can't be claimed while its Team Licence has an Open Refund Request, nor
  * after that request is approved (docs/adr/0003), nor from another country
  * than the buyer's.
+ *
+ * A successful claim tells the Team Admin who owns the Team Licence, with how
+ * many Seats are left.
  */
-export function claimSeat(
+export async function claimSeat(
   db: Db,
+  notifications: Notifications,
   code: string,
   studentId: number,
   studentCountry: string,
   now: Date
-): ClaimResult {
+): Promise<ClaimResult> {
   const seat = db.select().from(coupons).where(eq(coupons.code, code)).get();
   if (!seat) {
     return { ok: false, error: "Coupon not found" };
@@ -114,5 +120,58 @@ export function claimSeat(
 
   const enrollment = enroll(db, studentId, seat.courseId, now);
 
+  if (purchase) {
+    await bestEffort(`seat-claimed for seat ${seat.id}`, () =>
+      notifyTeamAdmin(db, notifications, seat.id, purchase, studentId)
+    );
+  }
+
   return { ok: true, enrollment };
+}
+
+/** Seats on a Team Licence nobody has claimed and that weren't refunded. */
+function countSeatsLeft(db: Db, purchaseId: number): number {
+  return db
+    .select({ id: coupons.id })
+    .from(coupons)
+    .where(
+      and(
+        eq(coupons.purchaseId, purchaseId),
+        isNull(coupons.redeemedAt),
+        isNull(coupons.refundedAt)
+      )
+    )
+    .all().length;
+}
+
+async function notifyTeamAdmin(
+  db: Db,
+  notifications: Notifications,
+  seatId: number,
+  teamLicence: typeof purchases.$inferSelect,
+  studentId: number
+) {
+  const teamAdmin = getPerson(db, teamLicence.userId);
+  const student = getPerson(db, studentId);
+  const course = db
+    .select({ title: courses.title, slug: courses.slug })
+    .from(courses)
+    .where(eq(courses.id, teamLicence.courseId))
+    .get();
+  if (!teamAdmin || !student || !course) return;
+
+  await notifications.trigger({
+    kind: "seat-claimed",
+    recipients: [teamAdmin],
+    actor: student,
+    data: {
+      seatId,
+      purchaseId: teamLicence.id,
+      courseTitle: course.title,
+      courseSlug: course.slug,
+      seatsLeft: countSeatsLeft(db, teamLicence.id),
+      url: "/team",
+    },
+    idempotencyKey: `seat-claimed:${seatId}`,
+  });
 }

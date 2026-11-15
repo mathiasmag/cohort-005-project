@@ -33,6 +33,15 @@ export function describeNotification(item: FeedItem): NotificationRow {
         snippet: `${item.data.lessonTitle}: “${item.data.snippet}”`,
         url: item.data.url,
       };
+    case "seat-claimed":
+      return {
+        icon: "team",
+        title: `${actor} claimed a Seat`,
+        snippet: `${item.data.courseTitle}: ${item.data.seatsLeft} ${
+          item.data.seatsLeft === 1 ? "Seat" : "Seats"
+        } left`,
+        url: item.data.url,
+      };
     case "refund-request-confirmed":
       return {
         icon: "refund",

@@ -12,6 +12,7 @@ import type {
 export const knockWorkflowKey: Record<NotificationKind, string> = {
   "discussion-question": "discussion-question",
   "discussion-reply": "discussion-reply",
+  "seat-claimed": "seat-claimed",
   "refund-request-confirmed": "refund-request-confirmed",
   "open-refund-request": "open-refund-request",
   "refund-request-approved": "refund-request-approved",

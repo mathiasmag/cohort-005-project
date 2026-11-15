@@ -12,6 +12,7 @@ import {
   SEAT_ON_HOLD,
   SEAT_REFUNDED,
 } from "~/lib/enrollments.server";
+import { getNotifications } from "~/lib/notifications.server";
 import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Ticket, AlertCircle, CheckCircle2, Globe } from "lucide-react";
@@ -126,8 +127,9 @@ export async function action({ params, request }: Route.ActionArgs) {
   }
 
   const userCountry = await resolveCountry(request);
-  const result = claimSeat(
+  const result = await claimSeat(
     db,
+    getNotifications(),
     code,
     currentUserId,
     userCountry ?? "",

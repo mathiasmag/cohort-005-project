@@ -212,6 +212,7 @@ cd "$(dirname "$0")/.."
 WORKFLOWS=(
   "discussion-question|discussion-questions|**{{ actor.name }}** asked a question in {{ data.lessonTitle }}"
   "discussion-reply|discussion-replies|**{{ actor.name }}** replied to your question in {{ data.lessonTitle }}"
+  "seat-claimed|seat-claims|**{{ actor.name }}** claimed a Seat on {{ data.courseTitle }}"
   "refund-request-confirmed|refund-request-updates|We've received your Refund Request for {{ data.courseTitle }}"
   "open-refund-request|open-refund-requests|**{{ actor.name }}** requested a refund for {{ data.courseTitle }}"
   "refund-request-approved|refund-request-updates|Your Refund Request for {{ data.courseTitle }} was approved"
