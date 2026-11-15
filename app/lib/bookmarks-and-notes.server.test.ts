@@ -9,7 +9,7 @@ import {
 } from "./bookmarks.server";
 import { findNote, listNotes, saveNote } from "./notes.server";
 import { approveRefundRequest, raiseRefundRequest } from "./refunds.server";
-import { fakeNotifications } from "./notifications.fake.server";
+import { fakeNotifications } from "./notifications.server";
 
 type TestDb = ReturnType<typeof createTestDb>;
 
@@ -208,20 +208,20 @@ describe("an approved Refund", () => {
 
     const raised = await raiseRefundRequest(
       db,
+      notifications,
       purchase.id,
       base.user.id,
       "Not for me",
-      NOW,
-      notifications
+      NOW
     );
     if (!raised.ok) throw new Error(raised.error);
     const approved = await approveRefundRequest(
       db,
+      notifications,
       raised.refundRequestId,
       admin.id,
       null,
-      NOW,
-      notifications
+      NOW
     );
 
     expect(approved.ok).toBe(true);
