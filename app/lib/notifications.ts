@@ -22,6 +22,16 @@ const discussionData = {
   url: linkTarget,
 };
 
+const refundData = {
+  refundRequestId: z.number(),
+  purchaseId: z.number(),
+  courseTitle: z.string(),
+  courseSlug: z.string(),
+  /** What the buyer paid, in cents. */
+  amount: z.number(),
+  url: linkTarget,
+};
+
 /** Every Notification kind, with the data it carries. */
 export const notificationPayloadSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -31,6 +41,22 @@ export const notificationPayloadSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("discussion-reply"),
     data: z.object({ ...discussionData, questionId: z.number() }),
+  }),
+  z.object({
+    kind: z.literal("refund-request-confirmed"),
+    data: z.object(refundData),
+  }),
+  z.object({
+    kind: z.literal("open-refund-request"),
+    data: z.object({ ...refundData, reason: z.string() }),
+  }),
+  z.object({
+    kind: z.literal("refund-request-approved"),
+    data: z.object({ ...refundData, decisionNote: z.string().nullable() }),
+  }),
+  z.object({
+    kind: z.literal("refund-request-declined"),
+    data: z.object({ ...refundData, decisionNote: z.string() }),
   }),
 ]);
 
@@ -78,6 +104,10 @@ export const DEFAULT_PREFERENCES: Required<NotificationPreferences> = {
 export const categoryOfKind: Record<NotificationKind, NotificationCategory> = {
   "discussion-question": "discussion-questions",
   "discussion-reply": "discussion-replies",
+  "refund-request-confirmed": "refund-request-updates",
+  "open-refund-request": "open-refund-requests",
+  "refund-request-approved": "refund-request-updates",
+  "refund-request-declined": "refund-request-updates",
 };
 
 // ─── Snippets and link targets ───

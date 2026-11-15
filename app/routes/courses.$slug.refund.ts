@@ -6,6 +6,7 @@ import { db } from "~/db";
 import { courses, purchases } from "~/db/schema";
 import { eq } from "drizzle-orm";
 import { parseFormData, parseParams } from "~/lib/validation";
+import { getNotifications } from "~/lib/notifications.server";
 import { raiseRefundRequest } from "~/lib/refunds.server";
 import { sendEmail } from "~/lib/mailer.server";
 
@@ -60,8 +61,9 @@ export async function action({ params, request }: Route.ActionArgs) {
     throw data("Purchase not found.", { status: 404 });
   }
 
-  const result = raiseRefundRequest(
+  const result = await raiseRefundRequest(
     db,
+    getNotifications(),
     purchase.id,
     currentUserId,
     parsed.data.reason,

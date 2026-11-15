@@ -1,13 +1,10 @@
 import { eq } from "drizzle-orm";
-import { comments, courses, lessons, modules, users } from "~/db/schema";
+import { comments, courses, lessons, modules } from "~/db/schema";
 import { MAX_COMMENT_LENGTH, MIN_COMMENT_LENGTH } from "~/lib/comments";
 import { commentUrl, snippetOf } from "~/lib/notifications";
-import {
-  bestEffort,
-  type NotificationPerson,
-  type Notifications,
-} from "~/lib/notifications.server";
+import { bestEffort, type Notifications } from "~/lib/notifications.server";
 import type { Db } from "~/lib/refunds.server";
+import { getPerson } from "~/lib/users.server";
 
 // ─── Discussions ───
 // Creating and soft-deleting Discussion Questions and Discussion Replies.
@@ -49,22 +46,6 @@ export function assertValidBody(body: string): string {
     );
   }
   return trimmed;
-}
-
-export function getPerson(
-  db: Db,
-  userId: number
-): NotificationPerson | undefined {
-  return db
-    .select({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      avatarUrl: users.avatarUrl,
-    })
-    .from(users)
-    .where(eq(users.id, userId))
-    .get();
 }
 
 /**

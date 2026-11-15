@@ -14,6 +14,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { AlertTriangle, Receipt } from "lucide-react";
 import { data, isRouteErrorResponse, Link } from "react-router";
 import { formatPrice } from "~/lib/utils";
+import { getNotifications } from "~/lib/notifications.server";
 import {
   approveRefundRequest,
   declineRefundRequest,
@@ -108,15 +109,17 @@ export async function action({ request }: Route.ActionArgs) {
 
   const result =
     intent === "approve"
-      ? approveRefundRequest(
+      ? await approveRefundRequest(
           db,
+          getNotifications(),
           refundRequestId,
           platformAdmin.id,
           note || null,
           new Date()
         )
-      : declineRefundRequest(
+      : await declineRefundRequest(
           db,
+          getNotifications(),
           refundRequestId,
           platformAdmin.id,
           note,

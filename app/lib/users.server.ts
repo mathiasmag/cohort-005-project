@@ -1,7 +1,11 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { UserRole, users } from "~/db/schema";
 import { DEFAULT_PREFERENCES } from "~/lib/notifications";
-import { bestEffort, type Notifications } from "~/lib/notifications.server";
+import {
+  bestEffort,
+  type NotificationPerson,
+  type Notifications,
+} from "~/lib/notifications.server";
 import type { Db } from "~/lib/refunds.server";
 
 // ─── Users ───
@@ -9,6 +13,38 @@ import type { Db } from "~/lib/refunds.server";
 // notification vendor. Syncing is best effort: it never fails the action.
 
 type User = typeof users.$inferSelect;
+
+/** A user as the Notifications port knows them. */
+export function getPerson(
+  db: Db,
+  userId: number
+): NotificationPerson | undefined {
+  return db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      avatarUrl: users.avatarUrl,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .get();
+}
+
+/** Everyone with the Platform Admin role right now, oldest account first. */
+export function getPlatformAdmins(db: Db): NotificationPerson[] {
+  return db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      avatarUrl: users.avatarUrl,
+    })
+    .from(users)
+    .where(eq(users.role, UserRole.Admin))
+    .orderBy(asc(users.id))
+    .all();
+}
 
 /**
  * Sends the user's name, email and avatar to the vendor, and writes the
