@@ -7,13 +7,14 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
   Bell,
   Check,
   GraduationCap,
   MessageSquare,
   Receipt,
+  Settings,
   UsersRound,
 } from "lucide-react";
 import { UserAvatar } from "~/components/user-avatar";
@@ -275,6 +276,15 @@ function NotificationPopover({
         >
           Mark all as read
         </button>
+        <Link
+          to="/settings#notifications"
+          onClick={close}
+          title="Notification settings"
+          aria-label="Notification settings"
+          className="rounded-md p-1 text-muted-foreground hover:bg-background hover:text-foreground"
+        >
+          <Settings className="size-4" />
+        </Link>
       </div>
       <div className="flex-1 overflow-y-auto">
         {feed.items.length === 0 && !feed.loading ? (

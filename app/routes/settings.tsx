@@ -15,10 +15,25 @@ import { AlertTriangle } from "lucide-react";
 import { data, isRouteErrorResponse, Link } from "react-router";
 import { db } from "~/db";
 import { eq } from "drizzle-orm";
-import { formatPrice } from "~/lib/utils";
+import { cn, formatPrice } from "~/lib/utils";
+import {
+  notificationCategories,
+  type NotificationCategory,
+} from "~/lib/notifications";
+import {
+  changePreference,
+  getNotificationSwitches,
+  type NotificationSwitch,
+} from "~/lib/notification-preferences.server";
 import { listRefundRequestsForBuyer } from "~/lib/refunds.server";
 import { getNotifications } from "~/lib/notifications.server";
 import { updateProfile } from "~/lib/users.server";
+
+const notificationPreferenceSchema = z.object({
+  intent: z.literal("set-notification-preference"),
+  category: z.enum(notificationCategories),
+  on: z.enum(["true", "false"]).transform((value) => value === "true"),
+});
 
 const settingsSchema = z.object({
   name: z.string().trim().min(1, "Name cannot be empty."),
@@ -53,6 +68,17 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const refundRequests = listRefundRequestsForBuyer(db, currentUserId);
 
+  let notificationSwitches: NotificationSwitch[] | null = null;
+  try {
+    notificationSwitches = await getNotificationSwitches(
+      db,
+      getNotifications(),
+      currentUserId
+    );
+  } catch (error) {
+    console.error("[notifications] reading preferences failed", error);
+  }
+
   return {
     user: {
       id: currentUser.id,
@@ -62,6 +88,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       role: currentUser.role,
     },
     refundRequests,
+    notificationSwitches,
   };
 }
 
@@ -82,6 +109,30 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const formData = await request.formData();
+
+  if (formData.get("intent") === "set-notification-preference") {
+    const preference = parseFormData(formData, notificationPreferenceSchema);
+    if (!preference.success) {
+      throw data("Invalid Notification setting.", { status: 400 });
+    }
+    try {
+      await changePreference(
+        db,
+        getNotifications(),
+        currentUser.id,
+        preference.data.category,
+        preference.data.on
+      );
+    } catch (error) {
+      console.error("[notifications] saving a preference failed", error);
+      return data(
+        { preferenceError: "Couldn't save that Notification setting." },
+        { status: 502 }
+      );
+    }
+    return { preferenceSaved: true };
+  }
+
   const parsed = parseFormData(formData, settingsSchema);
 
   if (!parsed.success) {
@@ -100,8 +151,102 @@ export async function action({ request }: Route.ActionArgs) {
   return { success: true };
 }
 
+const SWITCH_LABELS: Record<
+  NotificationCategory,
+  { label: string; description: string }
+> = {
+  "refund-request-updates": {
+    label: "Refund Request updates",
+    description: "When we receive your Refund Request, and when it's decided.",
+  },
+  "open-refund-requests": {
+    label: "Open Refund Requests",
+    description: "When a buyer asks for a refund.",
+  },
+  "seat-claims": {
+    label: "Seat claims",
+    description: "When someone claims a Seat on your Team Licence.",
+  },
+  enrollments: {
+    label: "Enrollments",
+    description: "When a Student enrolls on one of your courses.",
+  },
+  "discussion-questions": {
+    label: "Discussion Questions",
+    description: "When someone asks a question on one of your lessons.",
+  },
+  "discussion-replies": {
+    label: "Discussion Replies",
+    description: "When someone replies to a question you asked.",
+  },
+};
+
+function NotificationSwitchRow({
+  category,
+  on,
+}: {
+  category: NotificationCategory;
+  on: boolean;
+}) {
+  const fetcher = useFetcher<typeof action>();
+  const { label, description } = SWITCH_LABELS[category];
+
+  // Optimistic: show the new value while it saves. If it fails, the toast
+  // says so and the switch falls back to the stored value.
+  const pending = fetcher.formData?.get("on");
+  const shown = typeof pending === "string" ? pending === "true" : on;
+
+  useEffect(() => {
+    if (
+      fetcher.state === "idle" &&
+      fetcher.data &&
+      "preferenceError" in fetcher.data
+    ) {
+      toast.error(fetcher.data.preferenceError);
+    }
+  }, [fetcher.state, fetcher.data]);
+
+  return (
+    <div className="flex items-center justify-between gap-4 py-3">
+      <div>
+        <p id={`switch-${category}`} className="text-sm font-medium">
+          {label}
+        </p>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={shown}
+        aria-labelledby={`switch-${category}`}
+        onClick={() =>
+          fetcher.submit(
+            {
+              intent: "set-notification-preference",
+              category,
+              on: String(!shown),
+            },
+            { method: "post" }
+          )
+        }
+        className={cn(
+          "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
+          shown ? "bg-primary" : "bg-muted-foreground/30"
+        )}
+      >
+        <span
+          className={cn(
+            "inline-block size-4 rounded-full bg-background shadow transition-transform",
+            shown ? "translate-x-[1.125rem]" : "translate-x-0.5"
+          )}
+        />
+      </button>
+    </div>
+  );
+}
+
 export default function Settings({ loaderData }: Route.ComponentProps) {
-  const { user, refundRequests } = loaderData;
+  const { user, refundRequests, notificationSwitches } = loaderData;
   const openCount = refundRequests.filter(
     (refundRequest) => refundRequest.status === RefundStatus.Open
   ).length;
@@ -109,10 +254,11 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data?.success) {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if ("success" in fetcher.data && fetcher.data.success) {
       toast.success("Profile updated successfully.");
     }
-    if (fetcher.state === "idle" && fetcher.data?.errors) {
+    if ("errors" in fetcher.data) {
       const firstError = Object.values(fetcher.data.errors)[0] as string | undefined;
       if (firstError) toast.error(firstError);
     }
@@ -188,6 +334,32 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
               {fetcher.state !== "idle" ? "Saving..." : "Save Changes"}
             </Button>
           </fetcher.Form>
+        </CardContent>
+      </Card>
+
+      <Card id="notifications" className="mt-8 max-w-md scroll-mt-6">
+        <CardHeader>
+          <h2 className="text-lg font-semibold">Notifications</h2>
+          <p className="text-sm text-muted-foreground">
+            Choose what shows up under the bell.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {notificationSwitches ? (
+            <div className="divide-y">
+              {notificationSwitches.map((notificationSwitch) => (
+                <NotificationSwitchRow
+                  key={notificationSwitch.category}
+                  category={notificationSwitch.category}
+                  on={notificationSwitch.on}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Notification settings can't be loaded right now. Try again later.
+            </p>
+          )}
         </CardContent>
       </Card>
 
