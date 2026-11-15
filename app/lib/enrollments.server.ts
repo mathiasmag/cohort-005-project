@@ -25,31 +25,66 @@ export function findEnrollment(db: Db, userId: number, courseId: number) {
  * Gives a Student an Enrollment on a course. A Student has at most one
  * Enrollment per course; a Lapsed Student, whose Enrollment has ended, can be
  * enrolled again.
+ *
+ * Every new Enrollment, however it came about, tells the course's Instructor.
+ * That category is off by default, so the vendor drops it unless the
+ * Instructor has opted in.
  */
-export function enroll(
+export async function enroll(
   db: Db,
+  notifications: Notifications,
   studentId: number,
   courseId: number,
   now: Date
-): Enrollment {
+): Promise<Enrollment> {
   if (findEnrollment(db, studentId, courseId)) {
     throw new Error("User is already enrolled in this course");
   }
 
-  const course = db
-    .select({ id: courses.id })
-    .from(courses)
-    .where(eq(courses.id, courseId))
-    .get();
+  const course = db.select().from(courses).where(eq(courses.id, courseId)).get();
   if (!course) {
     throw new Error("Course not found");
   }
 
-  return db
+  const enrollment = db
     .insert(enrollments)
     .values({ userId: studentId, courseId, enrolledAt: now.toISOString() })
     .returning()
     .get();
+
+  if (studentId !== course.instructorId) {
+    await bestEffort(`new-enrollment for ${enrollment.id}`, () =>
+      notifyInstructor(db, notifications, enrollment, course)
+    );
+  }
+
+  return enrollment;
+}
+
+async function notifyInstructor(
+  db: Db,
+  notifications: Notifications,
+  enrollment: Enrollment,
+  course: typeof courses.$inferSelect
+) {
+  const instructor = getPerson(db, course.instructorId);
+  const student = getPerson(db, enrollment.userId);
+  if (!instructor || !student) return;
+
+  await notifications.trigger({
+    kind: "new-enrollment",
+    recipients: [instructor],
+    actor: student,
+    data: {
+      enrollmentId: enrollment.id,
+      courseId: course.id,
+      courseTitle: course.title,
+      courseSlug: course.slug,
+      studentName: student.name,
+      url: `/instructor/${course.id}/students`,
+    },
+    idempotencyKey: `new-enrollment:${enrollment.id}`,
+  });
 }
 
 export const SEAT_ON_HOLD =
@@ -118,7 +153,13 @@ export async function claimSeat(
     .where(eq(coupons.id, seat.id))
     .run();
 
-  const enrollment = enroll(db, studentId, seat.courseId, now);
+  const enrollment = await enroll(
+    db,
+    notifications,
+    studentId,
+    seat.courseId,
+    now
+  );
 
   if (purchase) {
     await bestEffort(`seat-claimed for seat ${seat.id}`, () =>

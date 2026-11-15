@@ -33,6 +33,13 @@ export function describeNotification(item: FeedItem): NotificationRow {
         snippet: `${item.data.lessonTitle}: “${item.data.snippet}”`,
         url: item.data.url,
       };
+    case "new-enrollment":
+      return {
+        icon: "enrollment",
+        title: `${item.data.studentName} enrolled`,
+        snippet: item.data.courseTitle,
+        url: item.data.url,
+      };
     case "seat-claimed":
       return {
         icon: "team",

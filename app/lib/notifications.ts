@@ -43,6 +43,17 @@ export const notificationPayloadSchema = z.discriminatedUnion("kind", [
     data: z.object({ ...discussionData, questionId: z.number() }),
   }),
   z.object({
+    kind: z.literal("new-enrollment"),
+    data: z.object({
+      enrollmentId: z.number(),
+      courseId: z.number(),
+      courseTitle: z.string(),
+      courseSlug: z.string(),
+      studentName: z.string(),
+      url: linkTarget,
+    }),
+  }),
+  z.object({
     kind: z.literal("seat-claimed"),
     data: z.object({
       seatId: z.number(),
@@ -115,6 +126,7 @@ export const DEFAULT_PREFERENCES: Required<NotificationPreferences> = {
 export const categoryOfKind: Record<NotificationKind, NotificationCategory> = {
   "discussion-question": "discussion-questions",
   "discussion-reply": "discussion-replies",
+  "new-enrollment": "enrollments",
   "seat-claimed": "seat-claims",
   "refund-request-confirmed": "refund-request-updates",
   "open-refund-request": "open-refund-requests",
