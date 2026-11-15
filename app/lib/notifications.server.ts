@@ -2,6 +2,7 @@ import type {
   FeedSession,
   NotificationData,
   NotificationKind,
+  NotificationPreferences,
 } from "~/lib/notifications";
 import { serverEnv } from "~/lib/env.server";
 import { knockNotifications } from "~/lib/notifications.knock.server";
@@ -41,6 +42,15 @@ export type Notification = {
 
 export interface Notifications {
   trigger(notification: Notification): Promise<void>;
+  /** Creates or updates the person's identity: name, email and avatar. */
+  identify(person: NotificationPerson): Promise<void>;
+  /** The person's stored preferences, or null if they have none yet. */
+  getPreferences(userId: number): Promise<NotificationPreferences | null>;
+  /** Replaces the person's whole preference set. */
+  setPreferences(
+    userId: number,
+    preferences: NotificationPreferences
+  ): Promise<void>;
   /** Signs a token that reads only this user's feed. Null without keys. */
   feedSession(userId: number): Promise<FeedSession | null>;
 }
@@ -76,6 +86,17 @@ export function loggingNotifications(): Notifications {
         notification.data
       );
     },
+    async identify(person) {
+      console.info(`[notifications] identify ${person.id} (no keys, skipped)`);
+    },
+    async getPreferences() {
+      return null;
+    },
+    async setPreferences(userId) {
+      console.info(
+        `[notifications] set preferences for ${userId} (no keys, skipped)`
+      );
+    },
     async feedSession() {
       return null;
     },
@@ -84,6 +105,8 @@ export function loggingNotifications(): Notifications {
 
 export type FakeNotifications = Notifications & {
   triggered: Notification[];
+  identified: Map<number, NotificationPerson>;
+  preferences: Map<number, NotificationPreferences>;
   /** Makes every later call throw, like a vendor outage. */
   breakDown(): void;
 };
@@ -91,6 +114,8 @@ export type FakeNotifications = Notifications & {
 export function fakeNotifications(): FakeNotifications {
   let broken = false;
   const triggered: Notification[] = [];
+  const identified = new Map<number, NotificationPerson>();
+  const preferences = new Map<number, NotificationPreferences>();
 
   function failIfBroken() {
     if (broken) throw new Error("Notification vendor is down");
@@ -98,12 +123,26 @@ export function fakeNotifications(): FakeNotifications {
 
   return {
     triggered,
+    identified,
+    preferences,
     breakDown() {
       broken = true;
     },
     async trigger(notification) {
       failIfBroken();
       triggered.push(notification);
+    },
+    async identify(person) {
+      failIfBroken();
+      identified.set(person.id, person);
+    },
+    async getPreferences(userId) {
+      failIfBroken();
+      return preferences.get(userId) ?? null;
+    },
+    async setPreferences(userId, set) {
+      failIfBroken();
+      preferences.set(userId, set);
     },
     async feedSession(userId) {
       failIfBroken();

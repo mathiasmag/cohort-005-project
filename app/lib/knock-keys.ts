@@ -14,6 +14,11 @@ export const knockWorkflowKey: Record<NotificationKind, string> = {
 };
 
 export const knockCategoryKey: Record<NotificationCategory, string> = {
+  "refund-request-updates": "refund-request-updates",
+  "open-refund-requests": "open-refund-requests",
+  "seat-claims": "seat-claims",
+  enrollments: "enrollments",
+  "discussion-questions": "discussion-questions",
   "discussion-replies": "discussion-replies",
 };
 

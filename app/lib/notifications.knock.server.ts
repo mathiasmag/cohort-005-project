@@ -1,6 +1,15 @@
-import Knock, { signUserToken } from "@knocklabs/node";
-import { knockWorkflowKey } from "~/lib/knock-keys";
-import type { FeedSession } from "~/lib/notifications";
+import Knock, { NotFoundError, signUserToken } from "@knocklabs/node";
+import type { PreferenceSet } from "@knocklabs/node/resources/recipients/preferences";
+import {
+  KNOCK_FEED_CHANNEL_TYPE,
+  knockCategoryKey,
+  knockWorkflowKey,
+} from "~/lib/knock-keys";
+import {
+  notificationCategories,
+  type FeedSession,
+  type NotificationPreferences,
+} from "~/lib/notifications";
 import type {
   NotificationPerson,
   Notifications,
@@ -12,6 +21,7 @@ import type {
 // (Knock's standard `avatar` property) stay current on older Notifications.
 
 const TOKEN_LIFETIME_SECONDS = 60 * 60;
+const PREFERENCE_SET = "default";
 
 type KnockConfig = {
   secretKey: string;
@@ -33,6 +43,44 @@ function toKnockUser(person: NotificationPerson) {
   };
 }
 
+type KnockCategories = NonNullable<PreferenceSet["categories"]>;
+
+// A category set to a plain boolean covers every channel; an object holds a
+// per-channel-type switch. A channel type left out of the object is on.
+function feedSwitch(setting: KnockCategories[string]): boolean {
+  if (typeof setting === "boolean") return setting;
+  const feed = setting.channel_types?.[KNOCK_FEED_CHANNEL_TYPE];
+  return typeof feed === "boolean" ? feed : true;
+}
+
+function fromKnockCategories(
+  categories: KnockCategories
+): NotificationPreferences | null {
+  const preferences: NotificationPreferences = {};
+  for (const category of notificationCategories) {
+    const setting = categories[knockCategoryKey[category]];
+    if (setting !== undefined) {
+      preferences[category] = { feed: feedSwitch(setting) };
+    }
+  }
+  return Object.keys(preferences).length > 0 ? preferences : null;
+}
+
+function toKnockCategories(
+  preferences: NotificationPreferences
+): KnockCategories {
+  const categories: KnockCategories = {};
+  for (const category of notificationCategories) {
+    const setting = preferences[category];
+    if (setting) {
+      categories[knockCategoryKey[category]] = {
+        channel_types: { [KNOCK_FEED_CHANNEL_TYPE]: setting.feed },
+      };
+    }
+  }
+  return categories;
+}
+
 export function knockNotifications(config: KnockConfig): Notifications {
   const knock = new Knock({ apiKey: config.secretKey });
 
@@ -47,6 +95,31 @@ export function knockNotifications(config: KnockConfig): Notifications {
         },
         { idempotencyKey: notification.idempotencyKey }
       );
+    },
+
+    async identify(person) {
+      const { id, ...properties } = toKnockUser(person);
+      await knock.users.update(id, properties);
+    },
+
+    async getPreferences(userId) {
+      try {
+        const set = await knock.users.getPreferences(
+          knockUserId(userId),
+          PREFERENCE_SET
+        );
+        return fromKnockCategories(set.categories ?? {});
+      } catch (error) {
+        if (error instanceof NotFoundError) return null;
+        throw error;
+      }
+    },
+
+    // Knock's set call replaces the whole set; callers pass a merged one.
+    async setPreferences(userId, preferences) {
+      await knock.users.setPreferences(knockUserId(userId), PREFERENCE_SET, {
+        categories: toKnockCategories(preferences),
+      });
     },
 
     async feedSession(userId): Promise<FeedSession | null> {

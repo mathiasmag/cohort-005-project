@@ -14,6 +14,9 @@ import {
   QuestionType,
   TeamMemberRole,
 } from "../app/db/schema";
+import { serverEnv } from "../app/lib/env.server";
+import { getNotifications } from "../app/lib/notifications.server";
+import { syncAllUsers } from "../app/lib/users.server";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -2854,4 +2857,14 @@ This course is still in draft while the cluster examples are rewritten against t
   );
 }
 
-seed().catch(console.error);
+// Seeded users exist in Knock only when there are keys to reach it.
+async function syncSeededUsers() {
+  if (!serverEnv("KNOCK_SECRET_API_KEY")) {
+    console.log("No KNOCK_SECRET_API_KEY, so seeded users weren't synced to Knock.");
+    return;
+  }
+  const count = await syncAllUsers(db, getNotifications());
+  console.log(`Synced ${count} users to Knock.`);
+}
+
+seed().then(syncSeededUsers).catch(console.error);

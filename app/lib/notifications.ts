@@ -35,7 +35,41 @@ export const notificationKinds = Object.keys(
   notificationDataSchemas
 ) as NotificationKind[];
 
-export type NotificationCategory = "discussion-replies";
+// ─── Preference categories ───
+// Everyone switches Notifications on or off per category, on the `feed`
+// channel (the only channel in v1; email will be a second one).
+
+export const notificationCategories = [
+  "refund-request-updates",
+  "open-refund-requests",
+  "seat-claims",
+  "enrollments",
+  "discussion-questions",
+  "discussion-replies",
+] as const;
+
+export type NotificationCategory = (typeof notificationCategories)[number];
+
+export type NotificationChannel = "feed";
+
+/** Only categories someone has a stored choice for are present. */
+export type NotificationPreferences = Partial<
+  Record<NotificationCategory, Record<NotificationChannel, boolean>>
+>;
+
+/**
+ * What Cadence writes for a person the first time they're synced: everything
+ * on, except Enrollments, which an Instructor opts into so a popular course
+ * doesn't flood their feed.
+ */
+export const DEFAULT_PREFERENCES: Required<NotificationPreferences> = {
+  "refund-request-updates": { feed: true },
+  "open-refund-requests": { feed: true },
+  "seat-claims": { feed: true },
+  enrollments: { feed: false },
+  "discussion-questions": { feed: true },
+  "discussion-replies": { feed: true },
+};
 
 export const categoryOfKind: Record<NotificationKind, NotificationCategory> = {
   "discussion-reply": "discussion-replies",

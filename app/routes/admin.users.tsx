@@ -7,6 +7,8 @@ import { getCurrentUserId } from "~/lib/session";
 import { parseFormData } from "~/lib/validation";
 import { UserRole, users } from "~/db/schema";
 import { db } from "~/db";
+import { getNotifications } from "~/lib/notifications.server";
+import { syncUser } from "~/lib/users.server";
 import { eq } from "drizzle-orm";
 import { Card, CardContent, CardHeader } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
@@ -120,6 +122,7 @@ export async function action({ request }: Route.ActionArgs) {
     const { userId, name, email } = parsed.data;
     const user = getUserById(userId);
     updateUser(userId, name, email, user?.bio ?? null);
+    await syncUser(db, getNotifications(), userId);
     return { success: true };
   }
 
