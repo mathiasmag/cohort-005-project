@@ -13,6 +13,12 @@ Issues and PRDs for this repo live as GitHub issues. Use the `gh` CLI for all op
 
 Target the `origin` remote's repo, never `ai-hero-dev/cohort-005-project`. `gh` does not reliably pick `origin`: when it can't prompt, it prefers a remote named `upstream`, and `npm run reset`/`cherry-pick` add one pointing at the course repo. Check with `gh repo set-default --view`; if it isn't `origin`'s repo, run `gh repo set-default <origin owner/repo>` (or pass `-R <origin owner/repo>`).
 
+## Find the spec behind a branch or PR
+
+1. Look for an issue reference (`#45`, `Closes #45`) in the PR body and the commit messages.
+2. With none, list every issue by title: `gh issue list --state all --limit 200 --json number,title`. Match by reading titles. Keyword search misses plurals ("bookmark" won't find "Bookmarks and Notes").
+3. With no title matching, ask the user for the spec before judging the diff against anything.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
