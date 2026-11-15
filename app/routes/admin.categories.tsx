@@ -12,7 +12,14 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Skeleton } from "~/components/ui/skeleton";
-import { AlertTriangle, BookOpen, Pencil, Plus, Tag, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  BookOpen,
+  Pencil,
+  Plus,
+  Tag,
+  Trash2,
+} from "lucide-react";
 import { data, isRouteErrorResponse, Link } from "react-router";
 
 const adminCategoryActionSchema = z.discriminatedUnion("intent", [
@@ -43,19 +50,11 @@ function slugify(name: string) {
 }
 
 function getCategoryBySlug(slug: string) {
-  return db
-    .select()
-    .from(categories)
-    .where(eq(categories.slug, slug))
-    .get();
+  return db.select().from(categories).where(eq(categories.slug, slug)).get();
 }
 
 function getCategoryByName(name: string) {
-  return db
-    .select()
-    .from(categories)
-    .where(eq(categories.name, name))
-    .get();
+  return db.select().from(categories).where(eq(categories.name, name)).get();
 }
 
 function getAllCategoriesWithCourseCounts() {
@@ -86,11 +85,7 @@ function createCategory(name: string) {
     throw new Error(`A category with the slug "${slug}" already exists.`);
   }
 
-  return db
-    .insert(categories)
-    .values({ name, slug })
-    .returning()
-    .get();
+  return db.insert(categories).values({ name, slug }).returning().get();
 }
 
 function updateCategory(id: number, name: string) {
@@ -128,11 +123,7 @@ function deleteCategory(id: number) {
     );
   }
 
-  return db
-    .delete(categories)
-    .where(eq(categories.id, id))
-    .returning()
-    .get();
+  return db.delete(categories).where(eq(categories.id, id)).returning().get();
 }
 
 export function meta() {
@@ -194,7 +185,9 @@ export async function action({ request }: Route.ActionArgs) {
       return { success: true, message: "Category created." };
     } catch (e) {
       return data(
-        { error: e instanceof Error ? e.message : "Failed to create category." },
+        {
+          error: e instanceof Error ? e.message : "Failed to create category.",
+        },
         { status: 400 }
       );
     }
@@ -206,7 +199,9 @@ export async function action({ request }: Route.ActionArgs) {
       return { success: true, message: "Category updated." };
     } catch (e) {
       return data(
-        { error: e instanceof Error ? e.message : "Failed to update category." },
+        {
+          error: e instanceof Error ? e.message : "Failed to update category.",
+        },
         { status: 400 }
       );
     }
@@ -218,7 +213,9 @@ export async function action({ request }: Route.ActionArgs) {
       return { success: true, message: "Category deleted." };
     } catch (e) {
       return data(
-        { error: e instanceof Error ? e.message : "Failed to delete category." },
+        {
+          error: e instanceof Error ? e.message : "Failed to delete category.",
+        },
         { status: 400 }
       );
     }
@@ -250,10 +247,7 @@ function CreateCategoryRow({ onClose }: { onClose: () => void }) {
   function handleSave() {
     const trimmed = name.trim();
     if (!trimmed) return;
-    fetcher.submit(
-      { intent: "create", name: trimmed },
-      { method: "post" }
-    );
+    fetcher.submit({ intent: "create", name: trimmed }, { method: "post" });
   }
 
   function handleCancel() {
@@ -466,10 +460,18 @@ function CategoryRow({
 function TableRowSkeleton() {
   return (
     <tr className="border-b border-border last:border-0">
-      <td className="px-4 py-3"><Skeleton className="h-4 w-28" /></td>
-      <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
-      <td className="px-4 py-3"><Skeleton className="h-4 w-8" /></td>
-      <td className="px-4 py-3"><Skeleton className="h-7 w-16" /></td>
+      <td className="px-4 py-3">
+        <Skeleton className="h-4 w-28" />
+      </td>
+      <td className="px-4 py-3">
+        <Skeleton className="h-4 w-24" />
+      </td>
+      <td className="px-4 py-3">
+        <Skeleton className="h-4 w-8" />
+      </td>
+      <td className="px-4 py-3">
+        <Skeleton className="h-7 w-16" />
+      </td>
     </tr>
   );
 }
@@ -488,10 +490,18 @@ export function HydrateFallback() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Slug</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Courses</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Name
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Slug
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Courses
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -531,7 +541,8 @@ export default function AdminCategories({ loaderData }: Route.ComponentProps) {
       <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
         <Tag className="size-4" />
         <span>
-          {categories.length} {categories.length === 1 ? "category" : "categories"} total
+          {categories.length}{" "}
+          {categories.length === 1 ? "category" : "categories"} total
         </span>
       </div>
 
@@ -581,7 +592,9 @@ export default function AdminCategories({ loaderData }: Route.ComponentProps) {
                     {categories.map((category) => (
                       <CategoryRow key={category.id} category={category} />
                     ))}
-                    {isAdding && <CreateCategoryRow onClose={() => setIsAdding(false)} />}
+                    {isAdding && (
+                      <CreateCategoryRow onClose={() => setIsAdding(false)} />
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -607,15 +620,22 @@ export default function AdminCategories({ loaderData }: Route.ComponentProps) {
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let title = "Something went wrong";
-  let message = "An unexpected error occurred while loading category management.";
+  let message =
+    "An unexpected error occurred while loading category management.";
 
   if (isRouteErrorResponse(error)) {
     if (error.status === 401) {
       title = "Sign in required";
-      message = typeof error.data === "string" ? error.data : "Please select a user from the DevUI panel.";
+      message =
+        typeof error.data === "string"
+          ? error.data
+          : "Please select a user from the DevUI panel.";
     } else if (error.status === 403) {
       title = "Access denied";
-      message = typeof error.data === "string" ? error.data : "Only admins can access this page.";
+      message =
+        typeof error.data === "string"
+          ? error.data
+          : "Only admins can access this page.";
     } else {
       title = `Error ${error.status}`;
       message = typeof error.data === "string" ? error.data : error.statusText;

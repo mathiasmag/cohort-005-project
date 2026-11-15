@@ -41,7 +41,11 @@ export async function enroll(
     throw new Error("User is already enrolled in this course");
   }
 
-  const course = db.select().from(courses).where(eq(courses.id, courseId)).get();
+  const course = db
+    .select()
+    .from(courses)
+    .where(eq(courses.id, courseId))
+    .get();
   if (!course) {
     throw new Error("Course not found");
   }
@@ -93,8 +97,7 @@ export const SEAT_REFUNDED =
   "This seat is no longer available. Ask the person who shared it with you.";
 
 export type ClaimResult =
-  | { ok: true; enrollment: Enrollment }
-  | { ok: false; error: string };
+  { ok: true; enrollment: Enrollment } | { ok: false; error: string };
 
 /**
  * A Student claims a Seat by its code, which enrols them on the course. A

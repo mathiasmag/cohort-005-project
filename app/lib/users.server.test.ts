@@ -41,7 +41,13 @@ function userNamed(email: string) {
 
 describe("signing up", () => {
   it("creates a Student and syncs them with the default preferences", async () => {
-    const user = await signUp(db, notifications, "Liam Park", "liam@example.com", NOW);
+    const user = await signUp(
+      db,
+      notifications,
+      "Liam Park",
+      "liam@example.com",
+      NOW
+    );
 
     expect(user).toMatchObject({ name: "Liam Park", role: "student" });
     expect(notifications.identified.get(user.id)).toEqual({
@@ -54,7 +60,13 @@ describe("signing up", () => {
   });
 
   it("returns the existing user for an email that's already signed up", async () => {
-    const user = await signUp(db, notifications, "Someone", "test@example.com", NOW);
+    const user = await signUp(
+      db,
+      notifications,
+      "Someone",
+      "test@example.com",
+      NOW
+    );
 
     expect(user.id).toBe(base.user.id);
   });

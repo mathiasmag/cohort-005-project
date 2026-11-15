@@ -390,7 +390,10 @@ export const bookmarks = sqliteTable(
       .$defaultFn(() => new Date().toISOString()),
   },
   (table) => [
-    uniqueIndex("bookmarks_user_lesson_unique").on(table.userId, table.lessonId),
+    uniqueIndex("bookmarks_user_lesson_unique").on(
+      table.userId,
+      table.lessonId
+    ),
   ]
 );
 

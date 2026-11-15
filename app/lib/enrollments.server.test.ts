@@ -52,10 +52,18 @@ function enrollmentsOf(userId: number) {
     .all();
 }
 
-function buyTeamLicence(buyerId: number, seats: number, country: string | null = null) {
+function buyTeamLicence(
+  buyerId: number,
+  seats: number,
+  country: string | null = null
+) {
   const team = db.insert(schema.teams).values({}).returning().get();
   db.insert(schema.teamMembers)
-    .values({ teamId: team.id, userId: buyerId, role: schema.TeamMemberRole.Admin })
+    .values({
+      teamId: team.id,
+      userId: buyerId,
+      role: schema.TeamMemberRole.Admin,
+    })
     .run();
   const purchase = db
     .insert(schema.purchases)
@@ -84,7 +92,13 @@ function buyTeamLicence(buyerId: number, seats: number, country: string | null =
 
 describe("enrolling a Student", () => {
   it("gives the Student an Enrollment on the course", async () => {
-    const enrollment = await enroll(db, notifications, base.user.id, base.course.id, NOW);
+    const enrollment = await enroll(
+      db,
+      notifications,
+      base.user.id,
+      base.course.id,
+      NOW
+    );
 
     expect(enrollment).toMatchObject({
       userId: base.user.id,
@@ -118,7 +132,14 @@ describe("claiming a Seat", () => {
     const priya = addStudent("Priya");
     const { seats } = buyTeamLicence(priya.id, 2);
 
-    const result = await claimSeat(db, notifications, seats[0].code, base.user.id, "", NOW);
+    const result = await claimSeat(
+      db,
+      notifications,
+      seats[0].code,
+      base.user.id,
+      "",
+      NOW
+    );
 
     expect(result).toMatchObject({ ok: true });
     expect(enrollmentsOf(base.user.id)).toHaveLength(1);
@@ -137,10 +158,21 @@ describe("claiming a Seat", () => {
     const priya = addStudent("Priya");
     const { purchase, seats } = buyTeamLicence(priya.id, 2);
     db.insert(schema.refunds)
-      .values({ purchaseId: purchase.id, status: RefundStatus.Open, reason: "No" })
+      .values({
+        purchaseId: purchase.id,
+        status: RefundStatus.Open,
+        reason: "No",
+      })
       .run();
 
-    const result = await claimSeat(db, notifications, seats[0].code, base.user.id, "", NOW);
+    const result = await claimSeat(
+      db,
+      notifications,
+      seats[0].code,
+      base.user.id,
+      "",
+      NOW
+    );
 
     expect(result).toMatchObject({ ok: false });
     expect(enrollmentsOf(base.user.id)).toHaveLength(0);
@@ -152,7 +184,9 @@ describe("claiming a Seat", () => {
     const { seats } = buyTeamLicence(priya.id, 1);
     await claimSeat(db, notifications, seats[0].code, sam.id, "", NOW);
 
-    expect(await claimSeat(db, notifications, seats[0].code, base.user.id, "", NOW)).toEqual({
+    expect(
+      await claimSeat(db, notifications, seats[0].code, base.user.id, "", NOW)
+    ).toEqual({
       ok: false,
       error: "Coupon has already been redeemed",
     });
@@ -162,7 +196,9 @@ describe("claiming a Seat", () => {
     const priya = addStudent("Priya");
     const { seats } = buyTeamLicence(priya.id, 1, "IN");
 
-    expect(await claimSeat(db, notifications, seats[0].code, base.user.id, "US", NOW)).toMatchObject({
+    expect(
+      await claimSeat(db, notifications, seats[0].code, base.user.id, "US", NOW)
+    ).toMatchObject({
       ok: false,
     });
   });
@@ -181,7 +217,12 @@ describe("the Seat claim Notification", () => {
       {
         kind: "seat-claimed",
         recipients: [
-          { id: priya.id, name: "Priya", email: "priya@example.com", avatarUrl: null },
+          {
+            id: priya.id,
+            name: "Priya",
+            email: "priya@example.com",
+            avatarUrl: null,
+          },
         ],
         actor: {
           id: base.user.id,
@@ -231,7 +272,14 @@ describe("the Seat claim Notification", () => {
     const { seats } = buyTeamLicence(priya.id, 1);
     notifications.breakDown();
 
-    const result = await claimSeat(db, notifications, seats[0].code, base.user.id, "", NOW);
+    const result = await claimSeat(
+      db,
+      notifications,
+      seats[0].code,
+      base.user.id,
+      "",
+      NOW
+    );
 
     expect(result.ok).toBe(true);
     expect(enrollmentsOf(base.user.id)).toHaveLength(1);
@@ -286,7 +334,15 @@ describe("the new Enrollment Notification", () => {
 
   it("tells the Instructor about a Claimed Seat", async () => {
     const priya = addStudent("Priya");
-    const { seats } = purchaseTeamLicence(db, priya.id, base.course.id, 7900, null, 1, NOW);
+    const { seats } = purchaseTeamLicence(
+      db,
+      priya.id,
+      base.course.id,
+      7900,
+      null,
+      1,
+      NOW
+    );
 
     await claimSeat(db, notifications, seats[0].code, base.user.id, "", NOW);
 
@@ -296,10 +352,22 @@ describe("the new Enrollment Notification", () => {
   });
 
   it("tells the Instructor when a Lapsed Student enrols again", async () => {
-    const first = await enroll(db, notifications, base.user.id, base.course.id, NOW);
+    const first = await enroll(
+      db,
+      notifications,
+      base.user.id,
+      base.course.id,
+      NOW
+    );
     db.delete(schema.enrollments).run();
 
-    const again = await enroll(db, notifications, base.user.id, base.course.id, NOW);
+    const again = await enroll(
+      db,
+      notifications,
+      base.user.id,
+      base.course.id,
+      NOW
+    );
 
     expect(enrollmentNotifications().map((n) => n.idempotencyKey)).toEqual([
       `new-enrollment:${first.id}`,

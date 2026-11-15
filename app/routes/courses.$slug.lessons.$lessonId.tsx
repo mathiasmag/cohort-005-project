@@ -822,9 +822,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     canModerate: access.isStaff,
     instructorName: instructor?.name ?? "your instructor",
     bookmarked,
-    note: note
-      ? { body: note.body, updatedAt: note.updatedAt }
-      : null,
+    note: note ? { body: note.body, updatedAt: note.updatedAt } : null,
   };
 }
 
