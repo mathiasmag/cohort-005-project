@@ -1,13 +1,20 @@
 import { eq } from "drizzle-orm";
-import { comments, courses, lessons, modules } from "~/db/schema";
+import { comments, courses, lessons, modules, users } from "~/db/schema";
 import { MAX_COMMENT_LENGTH, MIN_COMMENT_LENGTH } from "~/lib/comments";
+import { commentUrl, snippetOf } from "~/lib/notifications";
+import {
+  bestEffort,
+  type NotificationPerson,
+  type Notifications,
+} from "~/lib/notifications.server";
 import type { Db } from "~/lib/refunds.server";
 
 // ─── Discussions ───
 // Creating and soft-deleting Discussion Questions and Discussion Replies.
 // Every function takes the database first and `now` last, so tests can hand
-// in an in-memory database and a fixed clock. Validation failures throw an
-// Error whose message is safe to show the person who posted.
+// in an in-memory database and a fixed clock, and the Notifications port when
+// it sends any. Validation failures throw an Error whose message is safe to
+// show the person who posted.
 
 type Comment = typeof comments.$inferSelect;
 
@@ -44,18 +51,37 @@ export function assertValidBody(body: string): string {
   return trimmed;
 }
 
+export function getPerson(
+  db: Db,
+  userId: number
+): NotificationPerson | undefined {
+  return db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      avatarUrl: users.avatarUrl,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .get();
+}
+
 /**
  * Posts a Discussion Question (`parentId` null) or a Discussion Reply to one.
  * Replies are one level deep and must be on the same lesson as their parent.
+ *
+ * A Discussion Reply by anyone but the question's author notifies that author.
  */
-export function createComment(
+export async function createComment(
   db: Db,
+  notifications: Notifications,
   authorId: number,
   lessonId: number,
   parentId: number | null,
   body: string,
   now: Date
-): Comment {
+): Promise<Comment> {
   const trimmed = assertValidBody(body);
 
   const course = getCourseForLesson(db, lessonId);
@@ -63,8 +89,9 @@ export function createComment(
     throw new Error("Lesson not found");
   }
 
+  let parent: Comment | undefined;
   if (parentId !== null) {
-    const parent = getComment(db, parentId);
+    parent = getComment(db, parentId);
     if (!parent) {
       throw new Error("Parent comment not found");
     }
@@ -76,7 +103,7 @@ export function createComment(
     }
   }
 
-  return db
+  const comment = db
     .insert(comments)
     .values({
       userId: authorId,
@@ -87,6 +114,44 @@ export function createComment(
     })
     .returning()
     .get();
+
+  if (parent && parent.userId !== authorId) {
+    const question = parent;
+    await bestEffort(`discussion-reply for comment ${comment.id}`, () =>
+      notifyQuestionAuthor(db, notifications, comment, question, course)
+    );
+  }
+
+  return comment;
+}
+
+async function notifyQuestionAuthor(
+  db: Db,
+  notifications: Notifications,
+  reply: Comment,
+  question: Comment,
+  course: NonNullable<ReturnType<typeof getCourseForLesson>>
+) {
+  const questionAuthor = getPerson(db, question.userId);
+  const replier = getPerson(db, reply.userId);
+  if (!questionAuthor || !replier) return;
+
+  await notifications.trigger({
+    kind: "discussion-reply",
+    recipients: [questionAuthor],
+    actor: replier,
+    data: {
+      commentId: reply.id,
+      questionId: question.id,
+      lessonId: reply.lessonId,
+      lessonTitle: course.lessonTitle,
+      courseTitle: course.courseTitle,
+      courseSlug: course.courseSlug,
+      snippet: snippetOf(reply.body),
+      url: commentUrl(course.courseSlug, reply.lessonId, reply.id),
+    },
+    idempotencyKey: `discussion-reply:${reply.id}`,
+  });
 }
 
 /**

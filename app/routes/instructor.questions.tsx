@@ -18,6 +18,7 @@ import {
   getComment,
   getCourseForLesson,
 } from "~/lib/comments.server";
+import { getNotifications } from "~/lib/notifications.server";
 import { parseFormData } from "~/lib/validation";
 import { db } from "~/db";
 import {
@@ -153,8 +154,9 @@ export async function action({ request }: Route.ActionArgs) {
   const access = await requireStaff(request, course.courseId);
 
   try {
-    createComment(
+    await createComment(
       db,
+      getNotifications(),
       access.userId!,
       question.lessonId,
       question.id,

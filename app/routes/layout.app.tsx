@@ -5,6 +5,8 @@ import { DevUI } from "~/components/dev-ui";
 import { Toaster } from "sonner";
 import { getCurrentUserId, getDevCountry } from "~/lib/session";
 import { getCountryTierInfo, COUNTRIES } from "~/lib/ppp";
+import { getFeedSession, getNotifications } from "~/lib/notifications.server";
+import { NotificationFeedProvider } from "~/components/notification-feed";
 import { eq, and, or, sql, desc } from "drizzle-orm";
 import { db } from "~/db";
 import {
@@ -213,6 +215,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     countryTierInfo,
     countries: COUNTRIES,
     isTeamAdmin: currentUserId ? isTeamAdmin(currentUserId) : false,
+    feedSession: currentUserId
+      ? await getFeedSession(getNotifications(), currentUserId)
+      : null,
   };
 }
 
@@ -225,9 +230,14 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
     countryTierInfo,
     countries,
     isTeamAdmin: userIsTeamAdmin,
+    feedSession,
   } = loaderData;
 
   return (
+    <NotificationFeedProvider
+      session={currentUser ? feedSession : null}
+      signedIn={currentUser !== null}
+    >
     <div className="flex h-screen overflow-hidden">
       <Sidebar
         currentUser={currentUser}
@@ -246,5 +256,6 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
       />
       <Toaster position="bottom-right" richColors closeButton />
     </div>
+    </NotificationFeedProvider>
   );
 }

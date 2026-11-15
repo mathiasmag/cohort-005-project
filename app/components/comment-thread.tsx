@@ -6,6 +6,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Textarea } from "~/components/ui/textarea";
 import { UserAvatar } from "~/components/user-avatar";
+import { commentAnchor } from "~/lib/notifications";
 import { cn, formatRelativeTime } from "~/lib/utils";
 import { MAX_COMMENT_LENGTH } from "~/lib/comments";
 
@@ -210,7 +211,7 @@ function CommentItem({
 
   if (comment.deleted) {
     return (
-      <div className="py-3">
+      <div id={commentAnchor(comment.id)} className="scroll-mt-4 py-3">
         <p className="text-sm italic text-muted-foreground">
           This comment was deleted.
         </p>
@@ -225,7 +226,10 @@ function CommentItem({
   }
 
   return (
-    <div className={cn("py-3", isReply && "border-l pl-4")}>
+    <div
+      id={commentAnchor(comment.id)}
+      className={cn("scroll-mt-4 py-3", isReply && "border-l pl-4")}
+    >
       <div className="flex items-start gap-3">
         <UserAvatar
           name={comment.author.name}
