@@ -140,7 +140,7 @@ describe("changing a preference", () => {
 
     await changePreference(db, notifications, base.instructor.id, "enrollments", true);
 
-    expect(notifications.preferences.get(base.instructor.id)).toEqual({
+    expect(notifications.preferences.get(base.instructor.id)).toMatchObject({
       enrollments: { feed: true },
       "discussion-questions": { feed: false },
       "discussion-replies": { feed: true },
@@ -170,5 +170,21 @@ describe("changing a preference", () => {
     await expect(
       changePreference(db, notifications, base.user.id, "discussion-replies", false)
     ).rejects.toThrow();
+  });
+});
+
+describe("changing a preference on a partial set", () => {
+  it("fills a missing category with its default rather than leaving it on", async () => {
+    notifications.preferences.set(base.instructor.id, {
+      "discussion-replies": { feed: true },
+    });
+
+    await changePreference(db, notifications, base.instructor.id, "discussion-questions", false);
+
+    expect(notifications.preferences.get(base.instructor.id)).toMatchObject({
+      enrollments: { feed: false },
+      "discussion-questions": { feed: false },
+      "discussion-replies": { feed: true },
+    });
   });
 });

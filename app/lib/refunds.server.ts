@@ -736,11 +736,8 @@ export async function approveRefundRequest(
   });
 
   if (result.ok) {
-    await notifyBuyerOfDecision(
-      db,
-      notifications,
-      refundRequestId,
-      platformAdminId
+    await bestEffort(`refund decision for ${refundRequestId}`, () =>
+      notifyBuyerOfDecision(db, notifications, refundRequestId, platformAdminId)
     );
   }
   return result;
@@ -795,11 +792,8 @@ export async function declineRefundRequest(
   });
 
   if (result.ok) {
-    await notifyBuyerOfDecision(
-      db,
-      notifications,
-      refundRequestId,
-      platformAdminId
+    await bestEffort(`refund decision for ${refundRequestId}`, () =>
+      notifyBuyerOfDecision(db, notifications, refundRequestId, platformAdminId)
     );
   }
   return result;
@@ -836,23 +830,21 @@ async function notifyBuyerOfDecision(
   const recipients = [buyer];
   const actor = getPerson(db, platformAdminId) ?? null;
 
-  await bestEffort(`refund decision for ${refundRequestId}`, () =>
-    row.status === RefundStatus.Approved
-      ? notifications.trigger({
-          kind: "refund-request-approved",
-          recipients,
-          actor,
-          data: { ...base, decisionNote: row.decisionNote },
-          idempotencyKey: `refund-approved:${refundRequestId}`,
-        })
-      : notifications.trigger({
-          kind: "refund-request-declined",
-          recipients,
-          actor,
-          data: { ...base, decisionNote: row.decisionNote ?? "" },
-          idempotencyKey: `refund-declined:${refundRequestId}`,
-        })
-  );
+  await (row.status === RefundStatus.Approved
+    ? notifications.trigger({
+        kind: "refund-request-approved",
+        recipients,
+        actor,
+        data: { ...base, decisionNote: row.decisionNote },
+        idempotencyKey: `refund-approved:${refundRequestId}`,
+      })
+    : notifications.trigger({
+        kind: "refund-request-declined",
+        recipients,
+        actor,
+        data: { ...base, decisionNote: row.decisionNote ?? "" },
+        idempotencyKey: `refund-declined:${refundRequestId}`,
+      }));
 }
 
 /** The email the buyer gets once their Refund Request is decided. */

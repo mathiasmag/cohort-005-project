@@ -28,7 +28,7 @@ const refundData = {
   courseTitle: z.string(),
   courseSlug: z.string(),
   /** What the buyer paid, in cents. */
-  amount: z.number(),
+  amount: z.number().int(),
   url: linkTarget,
 };
 

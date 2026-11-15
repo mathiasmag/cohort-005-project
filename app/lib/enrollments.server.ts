@@ -103,7 +103,7 @@ export type ClaimResult =
  * than the buyer's.
  *
  * A successful claim tells the Team Admin who owns the Team Licence, with how
- * many Seats are left.
+ * many Seats are left, unless they claimed it themselves.
  */
 export async function claimSeat(
   db: Db,
@@ -161,7 +161,7 @@ export async function claimSeat(
     now
   );
 
-  if (purchase) {
+  if (purchase && purchase.userId !== studentId) {
     await bestEffort(`seat-claimed for seat ${seat.id}`, () =>
       notifyTeamAdmin(db, notifications, seat.id, purchase, studentId)
     );

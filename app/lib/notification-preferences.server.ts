@@ -89,8 +89,9 @@ export async function getNotificationSwitches(
 
 /**
  * Turns one category on or off and leaves the rest as they are. The vendor
- * replaces the whole set on write, so the change is merged into what's stored
- * (or the defaults, if nothing is). Unlike sending a Notification, a failure
+ * replaces the whole set on write, so the change is merged into what's stored,
+ * over the defaults: a category missing from the stored set would otherwise
+ * count as on, which is wrong for Enrollments. Unlike sending a Notification, a failure
  * here is thrown: the person flipped the switch and must hear it didn't save.
  */
 export async function changePreference(
@@ -106,7 +107,8 @@ export async function changePreference(
 
   const stored = await notifications.getPreferences(userId);
   await notifications.setPreferences(userId, {
-    ...(stored ?? DEFAULT_PREFERENCES),
+    ...DEFAULT_PREFERENCES,
+    ...stored,
     [category]: { feed: on },
   });
 }

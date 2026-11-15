@@ -232,16 +232,18 @@ function NotificationPopover({
     client?.loadMore().catch(logFailure("loading older Notifications"));
   }, [client]);
 
-  // Infinite scroll: reaching the bottom loads the next older page.
+  // Infinite scroll: reaching the bottom loads the next older page. Observing
+  // again once a page has landed catches a bottom that is still in view.
+  const itemCount = feed.items.length;
   useEffect(() => {
     const element = sentinel.current;
-    if (!element || !feed.hasMore) return;
+    if (!element || !feed.hasMore || feed.loading) return;
     const observer = new IntersectionObserver((entries) => {
       if (entries.some((entry) => entry.isIntersecting)) loadMore();
     });
     observer.observe(element);
     return () => observer.disconnect();
-  }, [feed.hasMore, loadMore]);
+  }, [feed.hasMore, feed.loading, itemCount, loadMore]);
 
   function markRead(item: FeedItem) {
     if (item.readAt) return;

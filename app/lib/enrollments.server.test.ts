@@ -324,3 +324,15 @@ describe("the new Enrollment Notification", () => {
     expect(enrollmentsOf(base.user.id)).toHaveLength(1);
   });
 });
+
+describe("a Team Admin claiming their own Seat", () => {
+  it("doesn't tell them about their own claim", async () => {
+    const { seats } = buyTeamLicence(base.user.id, 2);
+
+    await claimSeat(db, notifications, seats[0].code, base.user.id, "", NOW);
+
+    expect(
+      notifications.triggered.filter((n) => n.kind === "seat-claimed")
+    ).toEqual([]);
+  });
+});
