@@ -3,7 +3,7 @@ import Knock, {
   type FeedStoreState,
 } from "@knocklabs/client";
 import { kindOfKnockWorkflow } from "~/lib/knock-keys";
-import { notificationDataSchemas } from "~/lib/notifications";
+import { notificationPayloadSchema } from "~/lib/notifications";
 import type {
   CreateFeedClient,
   FeedActor,
@@ -36,13 +36,12 @@ function toFeedItem(item: KnockFeedItem): FeedItem | null {
   const kind = kindOfKnockWorkflow(item.source.key);
   if (!kind) return null;
 
-  const parsed = notificationDataSchemas[kind].safeParse(item.data);
+  const parsed = notificationPayloadSchema.safeParse({ kind, data: item.data });
   if (!parsed.success) return null;
 
   return {
+    ...parsed.data,
     id: item.id,
-    kind,
-    data: parsed.data,
     actor: toActor(item),
     insertedAt: item.inserted_at,
     seenAt: item.seen_at,

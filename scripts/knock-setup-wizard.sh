@@ -210,6 +210,7 @@ cd "$(dirname "$0")/.."
 # key|category|one-line template (Cadence draws its own rows from the data;
 # the template is only what Knock's dashboard previews show)
 WORKFLOWS=(
+  "discussion-question|discussion-questions|**{{ actor.name }}** asked a question in {{ data.lessonTitle }}"
   "discussion-reply|discussion-replies|**{{ actor.name }}** replied to your question in {{ data.lessonTitle }}"
 )
 

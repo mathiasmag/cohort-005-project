@@ -71,7 +71,10 @@ export function getPerson(
  * Posts a Discussion Question (`parentId` null) or a Discussion Reply to one.
  * Replies are one level deep and must be on the same lesson as their parent.
  *
- * A Discussion Reply by anyone but the question's author notifies that author.
+ * A Discussion Question by anyone but the course's Instructor notifies the
+ * Instructor. A Discussion Reply by anyone but the question's author notifies
+ * that author. Notifications are a snapshot: editing a comment later doesn't
+ * change them.
  */
 export async function createComment(
   db: Db,
@@ -115,6 +118,12 @@ export async function createComment(
     .returning()
     .get();
 
+  if (!parent && authorId !== course.instructorId) {
+    await bestEffort(`discussion-question for comment ${comment.id}`, () =>
+      notifyInstructor(db, notifications, comment, course)
+    );
+  }
+
   if (parent && parent.userId !== authorId) {
     const question = parent;
     await bestEffort(`discussion-reply for comment ${comment.id}`, () =>
@@ -125,12 +134,45 @@ export async function createComment(
   return comment;
 }
 
+type LessonCourse = NonNullable<ReturnType<typeof getCourseForLesson>>;
+
+function discussionData(comment: Comment, course: LessonCourse) {
+  return {
+    commentId: comment.id,
+    lessonId: comment.lessonId,
+    lessonTitle: course.lessonTitle,
+    courseTitle: course.courseTitle,
+    courseSlug: course.courseSlug,
+    snippet: snippetOf(comment.body),
+    url: commentUrl(course.courseSlug, comment.lessonId, comment.id),
+  };
+}
+
+async function notifyInstructor(
+  db: Db,
+  notifications: Notifications,
+  question: Comment,
+  course: LessonCourse
+) {
+  const instructor = getPerson(db, course.instructorId);
+  const asker = getPerson(db, question.userId);
+  if (!instructor || !asker) return;
+
+  await notifications.trigger({
+    kind: "discussion-question",
+    recipients: [instructor],
+    actor: asker,
+    data: discussionData(question, course),
+    idempotencyKey: `discussion-question:${question.id}`,
+  });
+}
+
 async function notifyQuestionAuthor(
   db: Db,
   notifications: Notifications,
   reply: Comment,
   question: Comment,
-  course: NonNullable<ReturnType<typeof getCourseForLesson>>
+  course: LessonCourse
 ) {
   const questionAuthor = getPerson(db, question.userId);
   const replier = getPerson(db, reply.userId);
@@ -140,16 +182,7 @@ async function notifyQuestionAuthor(
     kind: "discussion-reply",
     recipients: [questionAuthor],
     actor: replier,
-    data: {
-      commentId: reply.id,
-      questionId: question.id,
-      lessonId: reply.lessonId,
-      lessonTitle: course.lessonTitle,
-      courseTitle: course.courseTitle,
-      courseSlug: course.courseSlug,
-      snippet: snippetOf(reply.body),
-      url: commentUrl(course.courseSlug, reply.lessonId, reply.id),
-    },
+    data: { ...discussionData(reply, course), questionId: question.id },
     idempotencyKey: `discussion-reply:${reply.id}`,
   });
 }
@@ -158,14 +191,19 @@ async function notifyQuestionAuthor(
  * Soft-deletes a comment. Its author may, and so may staff (the course's
  * Instructor or a Platform Admin). Deleting an already deleted comment leaves
  * it as it was. A deleted Discussion Question keeps its replies readable.
+ *
+ * The Notifications the comment caused are archived, so nobody is sent to
+ * content that's gone. Reply Notifications under a deleted Discussion
+ * Question stay, because those replies are still visible.
  */
-export function deleteComment(
+export async function deleteComment(
   db: Db,
+  notifications: Notifications,
   commentId: number,
   userId: number,
   isStaff: boolean,
   now: Date
-): Comment {
+): Promise<Comment> {
   const existing = getComment(db, commentId);
   if (!existing) {
     throw new Error("Comment not found");
@@ -177,10 +215,16 @@ export function deleteComment(
     return existing;
   }
 
-  return db
+  const deleted = db
     .update(comments)
     .set({ deletedAt: now.toISOString() })
     .where(eq(comments.id, commentId))
     .returning()
     .get();
+
+  await bestEffort(`archiving Notifications for comment ${commentId}`, () =>
+    notifications.archiveCausedByComment(commentId)
+  );
+
+  return deleted;
 }

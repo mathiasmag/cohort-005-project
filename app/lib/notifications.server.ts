@@ -1,7 +1,6 @@
 import type {
   FeedSession,
-  NotificationData,
-  NotificationKind,
+  NotificationPayload,
   NotificationPreferences,
 } from "~/lib/notifications";
 import { serverEnv } from "~/lib/env.server";
@@ -26,22 +25,22 @@ export type NotificationPerson = {
   avatarUrl: string | null;
 };
 
-type NotificationOf<K extends NotificationKind> = {
-  kind: K;
+export type Notification = NotificationPayload & {
   recipients: NotificationPerson[];
   /** Who did the thing. Null when Cadence itself is the sender. */
   actor: NotificationPerson | null;
-  data: NotificationData<K>;
   /** One per domain event, so a retry can never send a duplicate. */
   idempotencyKey: string;
 };
 
-export type Notification = {
-  [K in NotificationKind]: NotificationOf<K>;
-}[NotificationKind];
-
 export interface Notifications {
   trigger(notification: Notification): Promise<void>;
+  /**
+   * Archives every Notification a comment caused (the Instructor's Discussion
+   * Question Notification, or the author's Discussion Reply Notification), so
+   * it leaves the recipient's feed.
+   */
+  archiveCausedByComment(commentId: number): Promise<void>;
   /** Creates or updates the person's identity: name, email and avatar. */
   identify(person: NotificationPerson): Promise<void>;
   /** The person's stored preferences, or null if they have none yet. */
@@ -86,6 +85,11 @@ export function loggingNotifications(): Notifications {
         notification.data
       );
     },
+    async archiveCausedByComment(commentId) {
+      console.info(
+        `[notifications] archive Notifications for comment ${commentId} (no keys, skipped)`
+      );
+    },
     async identify(person) {
       console.info(`[notifications] identify ${person.id} (no keys, skipped)`);
     },
@@ -105,6 +109,7 @@ export function loggingNotifications(): Notifications {
 
 export type FakeNotifications = Notifications & {
   triggered: Notification[];
+  archivedForComments: number[];
   identified: Map<number, NotificationPerson>;
   preferences: Map<number, NotificationPreferences>;
   /** Makes every later call throw, like a vendor outage. */
@@ -114,6 +119,7 @@ export type FakeNotifications = Notifications & {
 export function fakeNotifications(): FakeNotifications {
   let broken = false;
   const triggered: Notification[] = [];
+  const archivedForComments: number[] = [];
   const identified = new Map<number, NotificationPerson>();
   const preferences = new Map<number, NotificationPreferences>();
 
@@ -123,6 +129,7 @@ export function fakeNotifications(): FakeNotifications {
 
   return {
     triggered,
+    archivedForComments,
     identified,
     preferences,
     breakDown() {
@@ -131,6 +138,10 @@ export function fakeNotifications(): FakeNotifications {
     async trigger(notification) {
       failIfBroken();
       triggered.push(notification);
+    },
+    async archiveCausedByComment(commentId) {
+      failIfBroken();
+      archivedForComments.push(commentId);
     },
     async identify(person) {
       failIfBroken();

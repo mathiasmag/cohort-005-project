@@ -22,18 +22,22 @@ const discussionData = {
   url: linkTarget,
 };
 
-export const notificationDataSchemas = {
-  "discussion-reply": z.object({ ...discussionData, questionId: z.number() }),
-} as const;
+/** Every Notification kind, with the data it carries. */
+export const notificationPayloadSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("discussion-question"),
+    data: z.object(discussionData),
+  }),
+  z.object({
+    kind: z.literal("discussion-reply"),
+    data: z.object({ ...discussionData, questionId: z.number() }),
+  }),
+]);
 
-export type NotificationKind = keyof typeof notificationDataSchemas;
+/** A Notification's kind and data, correlated: narrowing `kind` narrows `data`. */
+export type NotificationPayload = z.infer<typeof notificationPayloadSchema>;
 
-export type NotificationData<K extends NotificationKind = NotificationKind> =
-  z.infer<(typeof notificationDataSchemas)[K]>;
-
-export const notificationKinds = Object.keys(
-  notificationDataSchemas
-) as NotificationKind[];
+export type NotificationKind = NotificationPayload["kind"];
 
 // ─── Preference categories ───
 // Everyone switches Notifications on or off per category, on the `feed`
@@ -72,6 +76,7 @@ export const DEFAULT_PREFERENCES: Required<NotificationPreferences> = {
 };
 
 export const categoryOfKind: Record<NotificationKind, NotificationCategory> = {
+  "discussion-question": "discussion-questions",
   "discussion-reply": "discussion-replies",
 };
 

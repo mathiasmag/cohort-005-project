@@ -18,6 +18,13 @@ export function describeNotification(item: FeedItem): NotificationRow {
   const actor = item.actor?.name ?? "Someone";
 
   switch (item.kind) {
+    case "discussion-question":
+      return {
+        icon: "discussion",
+        title: `${actor} asked a question`,
+        snippet: `${item.data.lessonTitle}: “${item.data.snippet}”`,
+        url: item.data.url,
+      };
     case "discussion-reply":
       return {
         icon: "discussion",

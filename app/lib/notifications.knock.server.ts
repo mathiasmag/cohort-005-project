@@ -97,6 +97,20 @@ export function knockNotifications(config: KnockConfig): Notifications {
       );
     },
 
+    // Every Notification a comment caused carries its id as `commentId` in
+    // the trigger data, so Knock's List Messages filter finds them, whoever
+    // received them. The feed leaves archived messages out.
+    async archiveCausedByComment(commentId) {
+      const caused = knock.messages.list({
+        trigger_data: JSON.stringify({ commentId }),
+      });
+      for await (const message of caused) {
+        if (message.archived_at === null || message.archived_at === undefined) {
+          await knock.messages.archive(message.id);
+        }
+      }
+    },
+
     async identify(person) {
       const { id, ...properties } = toKnockUser(person);
       await knock.users.update(id, properties);

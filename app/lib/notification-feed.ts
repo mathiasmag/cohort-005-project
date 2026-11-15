@@ -1,8 +1,4 @@
-import type {
-  FeedSession,
-  NotificationData,
-  NotificationKind,
-} from "~/lib/notifications";
+import type { FeedSession, NotificationPayload } from "~/lib/notifications";
 
 // ─── The client feed port ───
 // What the Notification Feed components ask of the vendor, in Cadence's
@@ -12,20 +8,14 @@ import type {
 
 export type FeedActor = { name: string; avatarUrl: string | null };
 
-type FeedItemOf<K extends NotificationKind> = {
+export type FeedItem = NotificationPayload & {
   id: string;
-  kind: K;
-  data: NotificationData<K>;
   /** Null when Cadence itself sent it. */
   actor: FeedActor | null;
   insertedAt: string;
   seenAt: string | null;
   readAt: string | null;
 };
-
-export type FeedItem = {
-  [K in NotificationKind]: FeedItemOf<K>;
-}[NotificationKind];
 
 export type FeedState = {
   /** Newest first. */

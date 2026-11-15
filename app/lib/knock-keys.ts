@@ -10,6 +10,7 @@ import type {
 // but nothing outside the adapters may rely on that.
 
 export const knockWorkflowKey: Record<NotificationKind, string> = {
+  "discussion-question": "discussion-question",
   "discussion-reply": "discussion-reply",
 };
 
