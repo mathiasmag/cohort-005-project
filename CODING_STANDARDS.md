@@ -12,6 +12,12 @@ if (!course) throw data("Course not found", { status: 404 });
 The route then has one success path. A returned error shape gives every
 component a second path to forget about.
 
+## A comment and its code agree
+
+A comment states what the code next to it does. When they disagree, the
+spec decides which one is wrong: "capped at 2,000" above `.max(5000)` is a
+bug in the code if the spec says 2,000. Fix the side the spec contradicts.
+
 ## Parse untrusted input with a schema
 
 Form data, search parameters and request bodies get a zod schema before the

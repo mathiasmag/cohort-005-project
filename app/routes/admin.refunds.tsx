@@ -24,9 +24,7 @@ import {
 import { RULE_BREAK_LABELS } from "~/lib/refund-rules";
 import { sendEmail } from "~/lib/mailer.server";
 
-const refundFilterSchema = z
-  .nativeEnum(RefundStatus)
-  .catch(RefundStatus.Open);
+const refundFilterSchema = z.nativeEnum(RefundStatus).catch(RefundStatus.Open);
 
 const adminRefundActionSchema = z.discriminatedUnion("intent", [
   z.object({
@@ -214,11 +212,7 @@ function formatHours(seconds: number) {
   return `${(seconds / 3600).toFixed(1)}h`;
 }
 
-function Figures({
-  refundRequest,
-}: {
-  refundRequest: RefundRequestForReview;
-}) {
+function Figures({ refundRequest }: { refundRequest: RefundRequestForReview }) {
   const { figures } = refundRequest;
 
   const items =

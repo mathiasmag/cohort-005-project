@@ -26,8 +26,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   const { lessonId, eventType, positionSeconds } = parsed.data;
 
-  db
-    .insert(videoWatchEvents)
+  db.insert(videoWatchEvents)
     .values({
       userId: currentUserId,
       lessonId,

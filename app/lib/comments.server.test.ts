@@ -56,7 +56,15 @@ describe("creating a Discussion Question", () => {
 });
 
 function ask(authorId = base.user.id) {
-  return createComment(db, notifications, authorId, lessonId, null, "A question", NOW);
+  return createComment(
+    db,
+    notifications,
+    authorId,
+    lessonId,
+    null,
+    "A question",
+    NOW
+  );
 }
 
 describe("creating a Discussion Reply", () => {
@@ -78,10 +86,26 @@ describe("creating a Discussion Reply", () => {
 
   it("refuses a reply to a reply", async () => {
     const question = await ask();
-    const reply = await createComment(db, notifications, base.instructor.id, lessonId, question.id, "Yes", NOW);
+    const reply = await createComment(
+      db,
+      notifications,
+      base.instructor.id,
+      lessonId,
+      question.id,
+      "Yes",
+      NOW
+    );
 
     await expect(
-      createComment(db, notifications, base.user.id, lessonId, reply.id, "Nested", NOW)
+      createComment(
+        db,
+        notifications,
+        base.user.id,
+        lessonId,
+        reply.id,
+        "Nested",
+        NOW
+      )
     ).rejects.toThrow("Replies can only be one level deep");
   });
 
@@ -96,16 +120,38 @@ describe("deleting a comment", () => {
   it("lets the author soft-delete their Discussion Question", async () => {
     const question = await ask();
 
-    const deleted = await deleteComment(db, notifications, question.id, base.user.id, false, NOW);
+    const deleted = await deleteComment(
+      db,
+      notifications,
+      question.id,
+      base.user.id,
+      false,
+      NOW
+    );
 
     expect(deleted.deletedAt).toBe(NOW.toISOString());
   });
 
   it("lets the author soft-delete their Discussion Reply", async () => {
     const question = await ask();
-    const reply = await createComment(db, notifications, base.instructor.id, lessonId, question.id, "Yes", NOW);
+    const reply = await createComment(
+      db,
+      notifications,
+      base.instructor.id,
+      lessonId,
+      question.id,
+      "Yes",
+      NOW
+    );
 
-    const deleted = await deleteComment(db, notifications, reply.id, base.instructor.id, false, NOW);
+    const deleted = await deleteComment(
+      db,
+      notifications,
+      reply.id,
+      base.instructor.id,
+      false,
+      NOW
+    );
 
     expect(deleted.deletedAt).toBe(NOW.toISOString());
   });
@@ -114,20 +160,49 @@ describe("deleting a comment", () => {
     const question = await ask();
 
     await expect(
-      deleteComment(db, notifications, question.id, base.instructor.id, false, NOW)
+      deleteComment(
+        db,
+        notifications,
+        question.id,
+        base.instructor.id,
+        false,
+        NOW
+      )
     ).rejects.toThrow("You can only delete your own comments");
     expect(
-      (await deleteComment(db, notifications, question.id, base.instructor.id, true, NOW))
-        .deletedAt
+      (
+        await deleteComment(
+          db,
+          notifications,
+          question.id,
+          base.instructor.id,
+          true,
+          NOW
+        )
+      ).deletedAt
     ).toBe(NOW.toISOString());
   });
 
   it("leaves an already deleted comment as it was", async () => {
     const question = await ask();
-    await deleteComment(db, notifications, question.id, base.user.id, false, NOW);
+    await deleteComment(
+      db,
+      notifications,
+      question.id,
+      base.user.id,
+      false,
+      NOW
+    );
     const later = new Date(NOW.getTime() + 60_000);
 
-    const again = await deleteComment(db, notifications, question.id, base.user.id, false, later);
+    const again = await deleteComment(
+      db,
+      notifications,
+      question.id,
+      base.user.id,
+      false,
+      later
+    );
 
     expect(again.deletedAt).toBe(NOW.toISOString());
   });
@@ -184,7 +259,15 @@ describe("the Discussion Reply Notification", () => {
   it("sends nothing when the author replies to their own question", async () => {
     const question = await ask();
 
-    await createComment(db, notifications, base.user.id, lessonId, question.id, "Me again", NOW);
+    await createComment(
+      db,
+      notifications,
+      base.user.id,
+      lessonId,
+      question.id,
+      "Me again",
+      NOW
+    );
 
     expect(
       notifications.triggered.filter((n) => n.kind === "discussion-reply")
@@ -217,7 +300,11 @@ describe("the Discussion Reply Notification", () => {
 function addAdmin() {
   return db
     .insert(schema.users)
-    .values({ name: "Pat Admin", email: "pat@example.com", role: schema.UserRole.Admin })
+    .values({
+      name: "Pat Admin",
+      email: "pat@example.com",
+      role: schema.UserRole.Admin,
+    })
     .returning()
     .get();
 }
@@ -294,34 +381,85 @@ describe("archiving Notifications on delete", () => {
   it("archives the Instructor's Notification when a Discussion Question is deleted", async () => {
     const question = await ask();
 
-    await deleteComment(db, notifications, question.id, base.user.id, false, NOW);
+    await deleteComment(
+      db,
+      notifications,
+      question.id,
+      base.user.id,
+      false,
+      NOW
+    );
 
     expect(notifications.archivedForComments).toEqual([question.id]);
   });
 
   it("archives the author's Notification when a Discussion Reply is deleted", async () => {
     const question = await ask();
-    const reply = await createComment(db, notifications, base.instructor.id, lessonId, question.id, "Yes", NOW);
+    const reply = await createComment(
+      db,
+      notifications,
+      base.instructor.id,
+      lessonId,
+      question.id,
+      "Yes",
+      NOW
+    );
 
-    await deleteComment(db, notifications, reply.id, base.instructor.id, false, NOW);
+    await deleteComment(
+      db,
+      notifications,
+      reply.id,
+      base.instructor.id,
+      false,
+      NOW
+    );
 
     expect(notifications.archivedForComments).toEqual([reply.id]);
   });
 
   it("leaves the Reply Notifications under a deleted question alone", async () => {
     const question = await ask();
-    const reply = await createComment(db, notifications, base.instructor.id, lessonId, question.id, "Yes", NOW);
+    const reply = await createComment(
+      db,
+      notifications,
+      base.instructor.id,
+      lessonId,
+      question.id,
+      "Yes",
+      NOW
+    );
 
-    await deleteComment(db, notifications, question.id, base.user.id, false, NOW);
+    await deleteComment(
+      db,
+      notifications,
+      question.id,
+      base.user.id,
+      false,
+      NOW
+    );
 
     expect(notifications.archivedForComments).not.toContain(reply.id);
   });
 
   it("archives nothing for a comment that was already deleted", async () => {
     const question = await ask();
-    await deleteComment(db, notifications, question.id, base.user.id, false, NOW);
+    await deleteComment(
+      db,
+      notifications,
+      question.id,
+      base.user.id,
+      false,
+      NOW
+    );
 
-    await deleteComment(db, notifications, question.id, base.user.id, false, NOW);
+    await deleteComment(
+      db,
+      notifications,
+      question.id,
+      base.user.id,
+      false,
+      NOW
+    );
 
     expect(notifications.archivedForComments).toEqual([question.id]);
   });
@@ -330,7 +468,14 @@ describe("archiving Notifications on delete", () => {
     const question = await ask();
     notifications.breakDown();
 
-    const deleted = await deleteComment(db, notifications, question.id, base.user.id, false, NOW);
+    const deleted = await deleteComment(
+      db,
+      notifications,
+      question.id,
+      base.user.id,
+      false,
+      NOW
+    );
 
     expect(deleted.deletedAt).toBe(NOW.toISOString());
   });

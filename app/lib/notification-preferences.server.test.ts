@@ -105,7 +105,11 @@ describe("which Notification switches someone sees", () => {
   });
 
   it("shows the defaults when nothing is stored yet", async () => {
-    const switches = await getNotificationSwitches(db, notifications, base.instructor.id);
+    const switches = await getNotificationSwitches(
+      db,
+      notifications,
+      base.instructor.id
+    );
 
     expect(switches).toMatchObject([
       { category: "enrollments", on: false },
@@ -120,7 +124,11 @@ describe("which Notification switches someone sees", () => {
       "discussion-replies": { feed: false },
     });
 
-    const switches = await getNotificationSwitches(db, notifications, base.instructor.id);
+    const switches = await getNotificationSwitches(
+      db,
+      notifications,
+      base.instructor.id
+    );
 
     expect(switches).toMatchObject([
       { category: "enrollments", on: true },
@@ -138,7 +146,13 @@ describe("changing a preference", () => {
       "discussion-replies": { feed: true },
     });
 
-    await changePreference(db, notifications, base.instructor.id, "enrollments", true);
+    await changePreference(
+      db,
+      notifications,
+      base.instructor.id,
+      "enrollments",
+      true
+    );
 
     expect(notifications.preferences.get(base.instructor.id)).toMatchObject({
       enrollments: { feed: true },
@@ -148,7 +162,13 @@ describe("changing a preference", () => {
   });
 
   it("starts from the defaults when nothing is stored yet", async () => {
-    await changePreference(db, notifications, base.user.id, "discussion-replies", false);
+    await changePreference(
+      db,
+      notifications,
+      base.user.id,
+      "discussion-replies",
+      false
+    );
 
     expect(notifications.preferences.get(base.user.id)).toMatchObject({
       enrollments: { feed: false },
@@ -159,7 +179,13 @@ describe("changing a preference", () => {
 
   it("refuses a switch the person can't see", async () => {
     await expect(
-      changePreference(db, notifications, base.user.id, "open-refund-requests", false)
+      changePreference(
+        db,
+        notifications,
+        base.user.id,
+        "open-refund-requests",
+        false
+      )
     ).rejects.toThrow();
     expect(notifications.preferences.get(base.user.id)).toBeUndefined();
   });
@@ -168,7 +194,13 @@ describe("changing a preference", () => {
     notifications.breakDown();
 
     await expect(
-      changePreference(db, notifications, base.user.id, "discussion-replies", false)
+      changePreference(
+        db,
+        notifications,
+        base.user.id,
+        "discussion-replies",
+        false
+      )
     ).rejects.toThrow();
   });
 });
@@ -179,7 +211,13 @@ describe("changing a preference on a partial set", () => {
       "discussion-replies": { feed: true },
     });
 
-    await changePreference(db, notifications, base.instructor.id, "discussion-questions", false);
+    await changePreference(
+      db,
+      notifications,
+      base.instructor.id,
+      "discussion-questions",
+      false
+    );
 
     expect(notifications.preferences.get(base.instructor.id)).toMatchObject({
       enrollments: { feed: false },

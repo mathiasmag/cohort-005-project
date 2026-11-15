@@ -20,7 +20,10 @@
     "seed-wayfinder-issues": "bash scripts/seed-wayfinder-issues.sh",
     "db:migrate": "drizzle-kit migrate",
     "knock:sync-users": "tsx scripts/sync-users-to-knock.ts",
-    "loc": "git ls-files | grep -vE '(lock|.db|_snapshot.json)' | xargs wc -l"
+    "loc": "git ls-files | grep -vE '(lock|.db|_snapshot.json)' | xargs wc -l",
+    "format": "prettier --write app scripts request-logger",
+    "format:check": "prettier --check app scripts request-logger",
+    "check": "npm run format:check && npm run typecheck && npm run test"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
